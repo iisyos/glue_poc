@@ -23,7 +23,7 @@ resource "aws_glue_connection" "mysql_connection" {
   name = "${var.app_name}-MySQLConnection"
 
   connection_properties = {
-    JDBC_CONNECTION_URL = "jdbc:mysql://${aws_db_instance.rds_instance.endpoint}:${aws_db_instance.rds_instance.port}/${var.db_name}"
+    JDBC_CONNECTION_URL = "jdbc:mysql://${aws_db_instance.rds_instance.endpoint}/${var.db_name}"
     USERNAME            = aws_db_instance.rds_instance.username
     PASSWORD            = aws_db_instance.rds_instance.password
   }
