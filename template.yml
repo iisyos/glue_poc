@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  CloudFormation template for a self-referencing Security Group for Glue
+  and a Glue JDBC Connection resource (MySQL example).
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC where the Security Group will be created
+
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: Subnet to be used by the Glue Connection (must be in the same VPC)
+
+  MySQLHost:
+    Type: String
+    Description: The hostname or endpoint of your MySQL instance
+  MySQLPort:
+    Type: Number
+    Default: 3306
+    Description: The port number for MySQL
+  MySQLDatabase:
+    Type: String
+    Description: The database name to connect
+  MySQLUser:
+    Type: String
+    Description: The username for MySQL
+  MySQLPassword:
+    Type: String
+    NoEcho: true
+    Description: The password for MySQL
+
+Resources:
+  GlueSelfReferenceSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security Group for Glue with self-reference rule"
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+  # https://yomon.hatenablog.com/entry/2019/10/securitygroupselfref
+  SelfRefSecurityGroupIgress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt GlueSelfReferenceSG.GroupId
+      IpProtocol: tcp
+      FromPort: "0"
+      ToPort: "65535"
+      SourceSecurityGroupId: !GetAtt GlueSelfReferenceSG.GroupId
+
+  GlueConnection:
+    Type: AWS::Glue::Connection
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      ConnectionInput:
+        Name: "MySQLConnection"
+        ConnectionType: "JDBC"
+        Description: "Glue connection for MySQL"
+        ConnectionProperties:
+          JDBC_CONNECTION_URL: !Sub "jdbc:mysql://${MySQLHost}:${MySQLPort}/${MySQLDatabase}"
+          USERNAME: !Ref MySQLUser
+          PASSWORD: !Ref MySQLPassword
+        PhysicalConnectionRequirements:
+          SubnetId: !Ref SubnetId
+          SecurityGroupIdList:
+            - !Ref GlueSelfReferenceSG
+  GlueJobRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - glue.amazonaws.com
+            Action: sts:AssumeRole
+      Path: "/"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/AWSGlueServiceRole
+
+Outputs:
+  GlueSelfReferenceSecurityGroupId:
+    Description: "The Security Group ID for Glue (self-reference rule)"
+    Value: !Ref GlueSelfReferenceSG

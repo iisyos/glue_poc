@@ -18,12 +18,14 @@ module "vpc" {
       availability_zone = "ap-northeast-1c"
     }
   }
-  route_tables = {
-    "igw" = {
-      global_type = "igw"
-      vpc_gateway_endpoints = [
-        "com.amazonaws.ap-northeast-1.s3"
-      ]
-    }
-  }
+}
+
+resource "aws_vpc_endpoint" "s3_endpoint" {
+  vpc_id            = module.vpc.vpc_id
+  service_name      = "com.amazonaws.ap-northeast-1.s3"
+  vpc_endpoint_type = "Gateway"
+
+  route_table_ids = [
+    module.vpc.route_table_ids["igw"]
+  ]
 }
