@@ -12,6 +12,10 @@ module "vpc" {
     "private-primary" = {
       cidr_block        = "10.0.64.0/20"
       availability_zone = "ap-northeast-1a"
+    },
+    "private-secondary" = {
+      cidr_block        = "10.0.80.0/20"
+      availability_zone = "ap-northeast-1c"
     }
   }
   route_tables = {
